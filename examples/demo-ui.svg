@@ -1,0 +1,99 @@
+<svg width="1280" height="820" viewBox="0 0 1280 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="820" rx="32" fill="#EEF3F9"/>
+  <rect x="28" y="28" width="1224" height="764" rx="28" fill="#F7FAFE" stroke="#D8E2EF"/>
+
+  <rect x="56" y="64" width="276" height="692" rx="24" fill="#FFFFFF" stroke="#D8E2EF"/>
+  <rect x="356" y="64" width="868" height="692" rx="24" fill="#FFFFFF" stroke="#D8E2EF"/>
+
+  <rect x="84" y="96" width="54" height="54" rx="16" fill="#0F172A"/>
+  <path d="M101 112H122L110.5 135L101 112Z" fill="#38BDF8"/>
+  <path d="M121 112H136L120.5 138L114 126L121 112Z" fill="#2DD4BF"/>
+  <text x="150" y="118" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="22" font-weight="700">VisionPlay</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="500">
+    <tspan x="150" y="140">Universal video</tspan>
+    <tspan x="150" y="156">intelligence engine</tspan>
+  </text>
+
+  <rect x="84" y="194" width="220" height="56" rx="16" fill="#EEF4FF" stroke="#B9CCEA"/>
+  <text x="108" y="228" fill="#1D4ED8" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">Workspace</text>
+
+  <rect x="84" y="266" width="220" height="56" rx="16" fill="#F8FAFC" stroke="#D8E2EF"/>
+  <text x="108" y="300" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="600">Library</text>
+
+  <rect x="84" y="338" width="220" height="56" rx="16" fill="#F8FAFC" stroke="#D8E2EF"/>
+  <text x="108" y="372" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="600">Session overview</text>
+
+  <rect x="84" y="448" width="220" height="134" rx="18" fill="#F8FAFC" stroke="#D8E2EF"/>
+  <text x="108" y="482" fill="#94A3B8" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.6">LATEST RESULT</text>
+  <text x="108" y="520" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="18" font-weight="700">City Intersection</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">
+    <tspan x="108" y="548">2 tracks  ·  5 events</tspan>
+    <tspan x="108" y="568">0 frame errors</tspan>
+  </text>
+
+  <text x="388" y="120" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="28" font-weight="700">Evaluation Demo</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="14" font-weight="500">
+    <tspan x="388" y="146">Stable overlays, validated analytics, and polished output</tspan>
+    <tspan x="388" y="166">presentation for a clean evaluation walkthrough.</tspan>
+  </text>
+
+  <rect x="388" y="190" width="540" height="324" rx="24" fill="#07121E"/>
+  <rect x="404" y="206" width="508" height="292" rx="18" fill="#182433"/>
+  <path d="M404 408C470 350 526 340 592 364C653 386 714 392 776 370C827 352 872 334 912 342V498H404V408Z" fill="#263548"/>
+  <path d="M426 462H558" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"/>
+  <path d="M612 440H748" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+
+  <rect x="460" y="286" width="68" height="126" rx="12" fill="none" stroke="#2DD4BF" stroke-width="3"/>
+  <rect x="472" y="300" width="92" height="30" rx="15" fill="#0F766E"/>
+  <text x="485" y="320" fill="#FFFFFF" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700">Person · ID 4</text>
+
+  <rect x="594" y="268" width="122" height="76" rx="12" fill="none" stroke="#F59E0B" stroke-width="3"/>
+  <rect x="606" y="282" width="90" height="30" rx="15" fill="#B45309"/>
+  <text x="620" y="302" fill="#FFFFFF" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700">Van · ID 7</text>
+
+  <rect x="738" y="252" width="120" height="90" rx="12" fill="none" stroke="#38BDF8" stroke-width="3"/>
+  <rect x="750" y="266" width="90" height="30" rx="15" fill="#0369A1"/>
+  <text x="765" y="286" fill="#FFFFFF" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700">Car · ID 11</text>
+
+  <rect x="956" y="190" width="240" height="506" rx="22" fill="#FAFCFF" stroke="#D8E2EF"/>
+  <text x="984" y="220" fill="#94A3B8" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">EVENTS</text>
+
+  <rect x="984" y="246" width="184" height="90" rx="18" fill="#EEF9F4" stroke="#D8E2EF"/>
+  <text x="1006" y="278" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">Entry</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">
+    <tspan x="1006" y="306">Person detected</tspan>
+    <tspan x="1006" y="326">Frame 210</tspan>
+  </text>
+
+  <rect x="984" y="352" width="184" height="106" rx="18" fill="#EEF4FF" stroke="#D8E2EF"/>
+  <text x="1006" y="384" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">Interaction</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">
+    <tspan x="1006" y="412">Person · Car</tspan>
+    <tspan x="1006" y="432">Frames 211-212</tspan>
+  </text>
+
+  <rect x="984" y="474" width="184" height="90" rx="18" fill="#FFF8EC" stroke="#D8E2EF"/>
+  <text x="1006" y="506" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">Exit</text>
+  <text fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">
+    <tspan x="1006" y="534">Car leaves scene</tspan>
+    <tspan x="1006" y="554">Frame 213</tspan>
+  </text>
+
+  <rect x="984" y="590" width="184" height="78" rx="18" fill="#FFFFFF" stroke="#D8E2EF"/>
+  <text x="1006" y="620" fill="#94A3B8" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.3">RELIABILITY</text>
+  <text x="1006" y="648" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="16" font-weight="700">0 frame errors</text>
+
+  <rect x="388" y="542" width="260" height="154" rx="20" fill="#F8FBFF" stroke="#D8E2EF"/>
+  <text x="416" y="570" fill="#94A3B8" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.4">OVERVIEW</text>
+  <line x1="518" y1="592" x2="518" y2="670" stroke="#D8E2EF"/>
+  <text x="432" y="624" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="34" font-weight="800">8</text>
+  <text x="416" y="654" fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">Total detections</text>
+  <text x="548" y="624" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="34" font-weight="800">2</text>
+  <text x="548" y="654" fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">Stable tracks</text>
+
+  <rect x="668" y="542" width="260" height="154" rx="20" fill="#F7FCFA" stroke="#D8E2EF"/>
+  <text x="696" y="570" fill="#94A3B8" font-family="Manrope, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.4">PRIMARY TRACK</text>
+  <text x="696" y="612" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="24" font-weight="700">Car · ID 11</text>
+  <text x="696" y="640" fill="#62748A" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="500">Peak speed</text>
+  <text x="696" y="680" fill="#132238" font-family="Manrope, Arial, sans-serif" font-size="30" font-weight="800">142.22 px/s</text>
+</svg>

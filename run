@@ -1,0 +1,652 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE_PATH" ]]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE_PATH")" && pwd)"
+  SOURCE_PATH="$(readlink "$SOURCE_PATH")"
+  [[ "$SOURCE_PATH" != /* ]] && SOURCE_PATH="$SOURCE_DIR/$SOURCE_PATH"
+done
+
+ROOT_DIR="$(cd -P "$(dirname "$SOURCE_PATH")" && pwd)"
+RUN_DIR="$ROOT_DIR/.run"
+ENV_FILE="$ROOT_DIR/.env"
+ENV_TEMPLATE="$ROOT_DIR/.env.example"
+BACKEND_DIR="$ROOT_DIR/backend"
+FRONTEND_DIR="$ROOT_DIR/frontend"
+VENV_DIR="$BACKEND_DIR/.venv"
+BACKEND_LOG="$RUN_DIR/backend.log"
+FRONTEND_LOG="$RUN_DIR/frontend.log"
+BACKEND_PID_FILE="$RUN_DIR/backend.pid"
+FRONTEND_PID_FILE="$RUN_DIR/frontend.pid"
+TAIL_PID_FILE="$RUN_DIR/tail.pid"
+BACKEND_STAMP="$RUN_DIR/backend.requirements.sha256"
+FRONTEND_STAMP="$RUN_DIR/frontend.package.sha256"
+DOCKER_COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.yml"
+RUN_LOCK_FILE="$RUN_DIR/launcher.lock"
+TAIL_LINES="${TAIL_LINES:-30}"
+
+MODE="${1:-local}"
+
+log() {
+  printf '[VisionPlay] %s\n' "$*"
+}
+
+fail() {
+  printf '[VisionPlay] ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+print_recent_log() {
+  local label="$1"
+  local log_file="$2"
+
+  if [[ -f "$log_file" ]]; then
+    printf '\n[VisionPlay] Recent %s log:\n' "$label" >&2
+    tail -n 20 "$log_file" >&2 || true
+    printf '\n' >&2
+  fi
+}
+
+acquire_lock() {
+  mkdir -p "$RUN_DIR"
+
+  if [[ -f "$RUN_LOCK_FILE" ]]; then
+    local existing_pid
+    existing_pid="$(cat "$RUN_LOCK_FILE" 2>/dev/null || true)"
+    if [[ -n "$existing_pid" ]] && pid_is_running "$existing_pid"; then
+      fail "Another VisionPlay launcher command is already running (PID $existing_pid). Use './run status' or './run stop' first."
+    fi
+    rm -f "$RUN_LOCK_FILE"
+  fi
+
+  echo "$$" > "$RUN_LOCK_FILE"
+}
+
+release_lock() {
+  if [[ -f "$RUN_LOCK_FILE" ]]; then
+    local existing_pid
+    existing_pid="$(cat "$RUN_LOCK_FILE" 2>/dev/null || true)"
+    if [[ -z "$existing_pid" || "$existing_pid" == "$$" ]]; then
+      rm -f "$RUN_LOCK_FILE"
+    fi
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./run              Bootstrap dependencies and start the local stack
+  ./run local        Same as default local mode
+  ./run install      Install local dependencies only
+  ./run verify       Run local build and API smoke verification
+  ./run status       Show launcher-managed service status
+  ./run prod         Start the production-style Docker stack
+  ./run stop         Stop local processes and Docker services
+  ./run doctor       Check required tooling and environment
+  ./run install-command [target]
+
+Notes:
+  - Local mode uses SQLite, FastAPI, and the Vite dev server.
+  - Prod mode uses Docker Compose with PostgreSQL.
+  - Verify mode checks Python compilation, frontend build, API readiness, and upload validation.
+  - Status mode reports whether backend/frontend are running from this launcher.
+  - install-command creates a symlink so you can invoke `run` directly.
+EOF
+}
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+ensure_command() {
+  local name="$1"
+  local hint="${2:-Install '$1' and retry.}"
+  if ! command_exists "$name"; then
+    fail "$hint"
+  fi
+}
+
+ensure_python_version() {
+  ensure_command python3 "Install Python 3.9+ and retry."
+  if ! python3 - <<'PY' >/dev/null 2>&1
+import sys
+sys.exit(0 if sys.version_info >= (3, 9) else 1)
+PY
+  then
+    fail "Python 3.9 or newer is required."
+  fi
+}
+
+ensure_node_version() {
+  ensure_command node "Install Node.js 20.19+ or 22.12+ and retry."
+  if ! node - <<'JS' >/dev/null 2>&1
+const [major, minor] = process.versions.node.split(".").map(Number);
+const supported =
+  (major === 20 && minor >= 19) ||
+  (major === 22 && minor >= 12) ||
+  major > 22;
+process.exit(supported ? 0 : 1);
+JS
+  then
+    fail "Node.js 20.19+ or 22.12+ is required for the current Vite toolchain."
+  fi
+}
+
+ensure_runtime_directories() {
+  mkdir -p "$RUN_DIR" \
+    "$ROOT_DIR/backend/uploads/input" \
+    "$ROOT_DIR/backend/uploads/output" \
+    "$ROOT_DIR/backend/database"
+}
+
+ensure_env_file() {
+  if [[ ! -f "$ENV_FILE" ]]; then
+    cp "$ENV_TEMPLATE" "$ENV_FILE"
+    log "Created .env from .env.example"
+  fi
+}
+
+load_env_file() {
+  ensure_env_file
+  set -a
+  source "$ENV_FILE"
+  set +a
+
+  : "${API_HOST:=0.0.0.0}"
+  : "${API_PORT:=8000}"
+  : "${FRONTEND_PORT:=5173}"
+  : "${FRONTEND_PREVIEW_PORT:=4173}"
+  : "${VITE_API_BASE_URL:=http://localhost:${API_PORT}}"
+  export API_HOST API_PORT FRONTEND_PORT FRONTEND_PREVIEW_PORT VITE_API_BASE_URL
+}
+
+file_hash() {
+  local target="$1"
+  if command_exists shasum; then
+    shasum -a 256 "$target" | awk '{print $1}'
+    return 0
+  fi
+
+  if command_exists sha256sum; then
+    sha256sum "$target" | awk '{print $1}'
+    return 0
+  fi
+
+  python3 - <<PY
+import hashlib
+from pathlib import Path
+
+path = Path("$target")
+print(hashlib.sha256(path.read_bytes()).hexdigest())
+PY
+}
+
+files_hash() {
+  local hasher="shasum"
+
+  if command_exists shasum; then
+    cat "$@" | shasum -a 256 | awk '{print $1}'
+    return 0
+  fi
+
+  if command_exists sha256sum; then
+    cat "$@" | sha256sum | awk '{print $1}'
+    return 0
+  fi
+
+  python3 - "$@" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+digest = hashlib.sha256()
+for raw_path in sys.argv[1:]:
+    digest.update(Path(raw_path).read_bytes())
+print(digest.hexdigest())
+PY
+}
+
+needs_install() {
+  local source_file="$1"
+  local stamp_file="$2"
+  local current_hash
+
+  current_hash="$(file_hash "$source_file")"
+  if [[ ! -f "$stamp_file" ]]; then
+    return 0
+  fi
+
+  [[ "$(cat "$stamp_file")" != "$current_hash" ]]
+}
+
+write_stamp() {
+  local source_file="$1"
+  local stamp_file="$2"
+  file_hash "$source_file" > "$stamp_file"
+}
+
+write_multi_stamp() {
+  local stamp_file="$1"
+  shift
+  files_hash "$@" > "$stamp_file"
+}
+
+needs_multi_install() {
+  local stamp_file="$1"
+  shift
+  local current_hash
+
+  current_hash="$(files_hash "$@")"
+  if [[ ! -f "$stamp_file" ]]; then
+    return 0
+  fi
+
+  [[ "$(cat "$stamp_file")" != "$current_hash" ]]
+}
+
+port_in_use() {
+  local port="$1"
+  if ! command_exists lsof; then
+    return 1
+  fi
+
+  lsof -ti tcp:"$port" >/dev/null 2>&1
+}
+
+assert_port_free() {
+  local port="$1"
+  local service_name="$2"
+  if port_in_use "$port"; then
+    fail "$service_name cannot start because port $port is already in use."
+  fi
+}
+
+pid_is_running() {
+  local pid="$1"
+  kill -0 "$pid" >/dev/null 2>&1
+}
+
+stop_pid_file() {
+  local pid_file="$1"
+  local label="$2"
+
+  if [[ ! -f "$pid_file" ]]; then
+    return 0
+  fi
+
+  local pid
+  pid="$(cat "$pid_file")"
+  if [[ -n "$pid" ]] && pid_is_running "$pid"; then
+    log "Stopping $label (PID $pid)"
+    pkill -TERM -P "$pid" >/dev/null 2>&1 || true
+    kill "$pid" >/dev/null 2>&1 || true
+    sleep 1
+    if pid_is_running "$pid"; then
+      pkill -KILL -P "$pid" >/dev/null 2>&1 || true
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+  fi
+  wait "$pid" 2>/dev/null || true
+  rm -f "$pid_file"
+}
+
+stop_local_processes() {
+  stop_pid_file "$TAIL_PID_FILE" "log tail"
+  stop_pid_file "$BACKEND_PID_FILE" "backend"
+  stop_pid_file "$FRONTEND_PID_FILE" "frontend"
+}
+
+stop_docker_stack() {
+  if command_exists docker && docker compose version >/dev/null 2>&1; then
+    docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" down >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup_all() {
+  stop_local_processes
+  release_lock
+}
+
+wait_for_http() {
+  local label="$1"
+  local url="$2"
+  local max_attempts="${3:-90}"
+  local log_file="${4:-}"
+  local attempt=1
+
+  ensure_command curl "Install curl so the bootstrap script can verify service readiness."
+
+  while (( attempt <= max_attempts )); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      log "$label is ready at $url"
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+
+  if [[ -n "$log_file" ]]; then
+    print_recent_log "$label" "$log_file"
+  fi
+  fail "$label did not become ready at $url"
+}
+
+ensure_python_environment() {
+  ensure_python_version
+
+  if [[ ! -d "$VENV_DIR" ]]; then
+    log "Creating Python virtual environment"
+    python3 -m venv "$VENV_DIR"
+  fi
+
+  if needs_install "$BACKEND_DIR/requirements.txt" "$BACKEND_STAMP"; then
+    log "Installing backend dependencies"
+    "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
+    "$VENV_DIR/bin/pip" install -r "$BACKEND_DIR/requirements.txt"
+    write_stamp "$BACKEND_DIR/requirements.txt" "$BACKEND_STAMP"
+  else
+    log "Backend dependencies are up to date"
+  fi
+}
+
+ensure_frontend_dependencies() {
+  ensure_node_version
+  ensure_command npm "Install npm and retry."
+
+  local should_install=1
+
+  if [[ -d "$FRONTEND_DIR/node_modules" ]]; then
+    if [[ -f "$FRONTEND_DIR/package-lock.json" ]]; then
+      if ! needs_multi_install "$FRONTEND_STAMP" "$FRONTEND_DIR/package.json" "$FRONTEND_DIR/package-lock.json"; then
+        should_install=0
+      fi
+    elif ! needs_install "$FRONTEND_DIR/package.json" "$FRONTEND_STAMP"; then
+      should_install=0
+    fi
+  fi
+
+  if [[ "$should_install" -eq 1 ]]; then
+    log "Installing frontend dependencies"
+    (
+      cd "$FRONTEND_DIR"
+      if [[ -f package-lock.json ]]; then
+        npm ci
+        else
+        npm install
+      fi
+    )
+    if [[ -f "$FRONTEND_DIR/package-lock.json" ]]; then
+      write_multi_stamp "$FRONTEND_STAMP" "$FRONTEND_DIR/package.json" "$FRONTEND_DIR/package-lock.json"
+    else
+      write_stamp "$FRONTEND_DIR/package.json" "$FRONTEND_STAMP"
+    fi
+  else
+    log "Frontend dependencies are up to date"
+  fi
+}
+
+doctor() {
+  load_env_file
+  ensure_runtime_directories
+  ensure_python_version
+  ensure_node_version
+  ensure_command npm "Install npm and retry."
+  ensure_command curl "Install curl and retry."
+
+  log "Environment looks good"
+  log "API_PORT=$API_PORT"
+  log "FRONTEND_PORT=$FRONTEND_PORT"
+  log "VITE_API_BASE_URL=$VITE_API_BASE_URL"
+  log "DOCKER_DATABASE_URL=${DOCKER_DATABASE_URL:-postgresql+psycopg2://visionplay:visionplay@db:5432/visionplay}"
+}
+
+install_local_dependencies() {
+  load_env_file
+  ensure_runtime_directories
+  ensure_python_environment
+  ensure_frontend_dependencies
+}
+
+start_backend() {
+  local reload_mode="${1:-reload}"
+  assert_port_free "$API_PORT" "Backend"
+  : > "$BACKEND_LOG"
+
+  if [[ "$reload_mode" == "reload" ]]; then
+    nohup "$VENV_DIR/bin/python" -m uvicorn backend.main:app --app-dir "$ROOT_DIR" --reload --host "$API_HOST" --port "$API_PORT" >>"$BACKEND_LOG" 2>&1 &
+  else
+    nohup "$VENV_DIR/bin/python" -m uvicorn backend.main:app --app-dir "$ROOT_DIR" --host "$API_HOST" --port "$API_PORT" >>"$BACKEND_LOG" 2>&1 &
+  fi
+
+  echo "$!" > "$BACKEND_PID_FILE"
+  disown "$!" 2>/dev/null || true
+}
+
+start_frontend() {
+  assert_port_free "$FRONTEND_PORT" "Frontend"
+  : > "$FRONTEND_LOG"
+
+  nohup /bin/zsh -lc "cd '$FRONTEND_DIR' && exec ./node_modules/.bin/vite --host 0.0.0.0 --port '$FRONTEND_PORT'" >>"$FRONTEND_LOG" 2>&1 &
+
+  echo "$!" > "$FRONTEND_PID_FILE"
+  disown "$!" 2>/dev/null || true
+}
+
+start_log_tail() {
+  touch "$BACKEND_LOG" "$FRONTEND_LOG"
+  tail -n "$TAIL_LINES" -f "$BACKEND_LOG" "$FRONTEND_LOG" &
+  echo "$!" > "$TAIL_PID_FILE"
+  disown "$!" 2>/dev/null || true
+}
+
+monitor_local_stack() {
+  local backend_pid frontend_pid
+  backend_pid="$(cat "$BACKEND_PID_FILE")"
+  frontend_pid="$(cat "$FRONTEND_PID_FILE")"
+
+  while true; do
+    if ! pid_is_running "$backend_pid"; then
+      print_recent_log "backend" "$BACKEND_LOG"
+      fail "Backend exited unexpectedly. Check $BACKEND_LOG"
+    fi
+    if ! pid_is_running "$frontend_pid"; then
+      print_recent_log "frontend" "$FRONTEND_LOG"
+      fail "Frontend exited unexpectedly. Check $FRONTEND_LOG"
+    fi
+    sleep 2
+  done
+}
+
+start_local_stack() {
+  acquire_lock
+  install_local_dependencies
+  stop_local_processes
+  trap cleanup_all EXIT INT TERM
+
+  start_backend reload
+  wait_for_http "Backend" "http://127.0.0.1:${API_PORT}/ready" 120 "$BACKEND_LOG"
+
+  start_frontend
+  wait_for_http "Frontend" "http://127.0.0.1:${FRONTEND_PORT}" 120 "$FRONTEND_LOG"
+
+  log "VisionPlay local stack is running"
+  log "Frontend: http://localhost:${FRONTEND_PORT}"
+  log "Backend:  http://localhost:${API_PORT}"
+  log "Logs:     $RUN_DIR"
+  log "Press Ctrl+C to stop"
+
+  start_log_tail
+  monitor_local_stack
+}
+
+verify_python_sources() {
+  log "Verifying Python source compilation"
+  PYTHONPYCACHEPREFIX=/tmp/visionplay-pyc "$VENV_DIR/bin/python" - <<'PY'
+from pathlib import Path
+import py_compile
+
+for root_name in ("backend", "ai"):
+    for path in Path(root_name).rglob("*.py"):
+        if ".venv" in path.parts or "__pycache__" in path.parts:
+            continue
+        py_compile.compile(str(path), doraise=True)
+PY
+}
+
+verify_frontend_build() {
+  log "Verifying frontend production build"
+  (
+    cd "$FRONTEND_DIR"
+    npm run build >/dev/null
+  )
+}
+
+verify_api_smoke() {
+  local upload_target="$RUN_DIR/smoke-upload.txt"
+  local response_target="$RUN_DIR/smoke-response.json"
+  local status_code
+
+  printf 'visionplay smoke test\n' > "$upload_target"
+  status_code="$(curl -sS -o "$response_target" -w '%{http_code}' -F "file=@${upload_target}" "http://127.0.0.1:${API_PORT}/upload-video")"
+  if [[ "$status_code" != "400" ]]; then
+    fail "Upload route smoke test failed. Expected HTTP 400 for invalid file, got HTTP $status_code."
+  fi
+}
+
+validate_docker_compose_file() {
+  if command_exists docker && docker compose version >/dev/null 2>&1; then
+    log "Validating Docker Compose configuration"
+    docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" config >/dev/null
+  else
+    log "Docker Compose validation skipped because Docker is not available"
+  fi
+}
+
+verify_local_stack() {
+  acquire_lock
+  install_local_dependencies
+  stop_local_processes
+  trap cleanup_all EXIT INT TERM
+
+  verify_python_sources
+  verify_frontend_build
+  validate_docker_compose_file
+
+  start_backend no-reload
+  wait_for_http "Backend" "http://127.0.0.1:${API_PORT}/ready" 120 "$BACKEND_LOG"
+  verify_api_smoke
+
+  stop_local_processes
+  trap - EXIT INT TERM
+  release_lock
+  log "Verification completed successfully"
+}
+
+start_production_stack() {
+  acquire_lock
+  load_env_file
+  ensure_runtime_directories
+  trap release_lock EXIT INT TERM
+  ensure_command docker "Install Docker Desktop and retry."
+  if ! docker compose version >/dev/null 2>&1; then
+    fail "Docker Compose is required."
+  fi
+
+  docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" config >/dev/null
+  docker compose --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" up --build -d --remove-orphans
+
+  wait_for_http "Backend" "http://127.0.0.1:${API_PORT}/ready" 180
+  wait_for_http "Frontend" "http://127.0.0.1:${FRONTEND_PREVIEW_PORT}/healthz" 180
+
+  log "VisionPlay production stack is running"
+  log "Frontend: http://localhost:${FRONTEND_PREVIEW_PORT}"
+  log "Backend:  http://localhost:${API_PORT}"
+  trap - EXIT INT TERM
+  release_lock
+}
+
+service_status_line() {
+  local label="$1"
+  local pid_file="$2"
+  local url="$3"
+
+  if [[ -f "$pid_file" ]]; then
+    local pid
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && pid_is_running "$pid"; then
+      if curl -fsS "$url" >/dev/null 2>&1; then
+        printf '[VisionPlay] %s: running (PID %s) %s\n' "$label" "$pid" "$url"
+        return 0
+      fi
+      printf '[VisionPlay] %s: process running (PID %s), but readiness check failed %s\n' "$label" "$pid" "$url"
+      return 0
+    fi
+  fi
+
+  printf '[VisionPlay] %s: stopped\n' "$label"
+}
+
+show_status() {
+  load_env_file
+  ensure_runtime_directories
+  service_status_line "Backend" "$BACKEND_PID_FILE" "http://127.0.0.1:${API_PORT}/ready"
+  service_status_line "Frontend" "$FRONTEND_PID_FILE" "http://127.0.0.1:${FRONTEND_PORT}"
+  if [[ -f "$RUN_LOCK_FILE" ]]; then
+    printf '[VisionPlay] launcher lock: %s\n' "$(cat "$RUN_LOCK_FILE" 2>/dev/null || printf 'present')"
+  fi
+  printf '[VisionPlay] logs: %s\n' "$RUN_DIR"
+}
+
+install_command_symlink() {
+  local target="${2:-/usr/local/bin/run}"
+  local target_dir
+  target_dir="$(dirname "$target")"
+
+  if [[ ! -d "$target_dir" ]]; then
+    fail "Target directory $target_dir does not exist."
+  fi
+
+  ln -sf "$ROOT_DIR/run" "$target"
+  log "Installed command symlink at $target"
+  log "You can now launch VisionPlay with: run"
+}
+
+case "$MODE" in
+  local)
+    start_local_stack
+    ;;
+  install)
+    install_local_dependencies
+    log "Local dependencies installed"
+    ;;
+  verify)
+    verify_local_stack
+    ;;
+  status)
+    show_status
+    ;;
+  prod|production|docker)
+    start_production_stack
+    ;;
+  stop)
+    ensure_env_file
+    stop_local_processes
+    stop_docker_stack
+    log "VisionPlay services stopped"
+    ;;
+  doctor)
+    doctor
+    ;;
+  install-command)
+    install_command_symlink "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage
+    fail "Unknown mode: $MODE"
+    ;;
+esac

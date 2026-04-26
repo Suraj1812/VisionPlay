@@ -1,0 +1,29 @@
+<svg width="400" height="400" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="traceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0072ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <path d="M20 35 V20 H35" fill="none" stroke="#718096" stroke-width="3" stroke-linecap="round" />
+  <path d="M65 20 H80 V35" fill="none" stroke="#718096" stroke-width="3" stroke-linecap="round" />
+  <path d="M20 65 V80 H35" fill="none" stroke="#718096" stroke-width="3" stroke-linecap="round" />
+  <path d="M80 65 V80 H65" fill="none" stroke="#718096" stroke-width="3" stroke-linecap="round" />
+
+  <path
+    d="M30 70 L50 45 L70 30"
+    fill="none"
+    stroke="url(#traceGradient)"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.8"
+  />
+
+  <circle cx="50" cy="50" r="14" fill="url(#traceGradient)" />
+  <path d="M47 44 L57 50 L47 56 Z" fill="white" />
+
+  <circle cx="30" cy="70" r="5" fill="#00d4ff" stroke="white" stroke-width="1.5" />
+  <circle cx="70" cy="30" r="5" fill="#00d4ff" stroke="white" stroke-width="1.5" />
+</svg>

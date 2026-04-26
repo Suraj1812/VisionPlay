@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/bin/python -m pip install --upgrade pip setuptools wheel
+          backend/.venv/bin/pip install -r backend/requirements.txt
+
+      - name: Run backend test suite
+        run: backend/.venv/bin/python -m unittest discover -s backend/tests -v
+
+      - name: Compile backend and AI sources
+        run: |
+          PYTHONPYCACHEPREFIX=/tmp/visionplay-pyc backend/.venv/bin/python - <<'PY'
+          from pathlib import Path
+          import py_compile
+
+          for root_name in ("backend", "ai"):
+              for path in Path(root_name).rglob("*.py"):
+                  if ".venv" in path.parts or "__pycache__" in path.parts:
+                      continue
+                  py_compile.compile(str(path), doraise=True)
+          PY
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Verify local launcher flow
+        run: ./run verify
+
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example -f docker/docker-compose.yml config >/dev/null
+
+  deploy_railway:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: c534eaef-1715-43c6-afa7-c93bc1793e40
+      RAILWAY_ENVIRONMENT: production
+      RAILWAY_BACKEND_URL: https://backend-production-cb8c.up.railway.app
+      RAILWAY_FRONTEND_URL: https://frontend-production-4950.up.railway.app
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Railway token availability
+        id: railway_token
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "RAILWAY_TOKEN is not configured, skipping Railway deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Node.js
+        if: steps.railway_token.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+
+      - name: Install Railway CLI
+        if: steps.railway_token.outputs.available == 'true'
+        run: npm install --global @railway/cli
+
+      - name: Prepare backend Railway config
+        if: steps.railway_token.outputs.available == 'true'
+        run: cp railway.backend.json railway.json
+
+      - name: Deploy backend service
+        if: steps.railway_token.outputs.available == 'true'
+        run: >
+          railway up
+          --service backend
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --ci
+          -m "GitHub Actions backend deploy (${GITHUB_SHA})"
+
+      - name: Wait for backend readiness
+        if: steps.railway_token.outputs.available == 'true'
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS "$RAILWAY_BACKEND_URL/ready" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Backend readiness check timed out." >&2
+          exit 1
+
+      - name: Prepare frontend Railway config
+        if: steps.railway_token.outputs.available == 'true'
+        run: cp railway.frontend.json railway.json
+
+      - name: Deploy frontend service
+        if: steps.railway_token.outputs.available == 'true'
+        run: >
+          railway up
+          --service frontend
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --ci
+          -m "GitHub Actions frontend deploy (${GITHUB_SHA})"
+
+      - name: Wait for frontend readiness
+        if: steps.railway_token.outputs.available == 'true'
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$RAILWAY_FRONTEND_URL" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Frontend readiness check timed out." >&2
+          exit 1

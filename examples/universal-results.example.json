@@ -1,0 +1,361 @@
+{
+  "video": {
+    "id": "2c245e66-2f1f-4ac2-98f5-dff1a5b1f5d2",
+    "filename": "city-intersection.mp4",
+    "status": "completed",
+    "fps": 25.0,
+    "frame_count": 400,
+    "width": 1920,
+    "height": 1080,
+    "uploaded_at": "2026-04-11T12:10:00Z",
+    "started_at": "2026-04-11T12:10:04Z",
+    "completed_at": "2026-04-11T12:10:18Z",
+    "source_video_url": "/media/input/2c245e66-2f1f-4ac2-98f5-dff1a5b1f5d2-city-intersection.mp4",
+    "processed_video_url": "/media/output/2c245e66-2f1f-4ac2-98f5-dff1a5b1f5d2-city-intersection.mp4"
+  },
+  "summary": {
+    "total_detections": 8,
+    "tracked_objects": 2,
+    "object_types": ["car", "person"],
+    "detections_by_type": {
+      "car": 4,
+      "person": 4
+    },
+    "tracks_by_type": {
+      "car": 1,
+      "person": 1
+    },
+    "primary_tracks": [
+      {
+        "tracking_id": 11,
+        "object_type": "car",
+        "duration_ms": 120.0,
+        "distance_px": 15.43,
+        "max_speed_px_s": 142.22,
+        "avg_confidence": 0.95
+      },
+      {
+        "tracking_id": 4,
+        "object_type": "person",
+        "duration_ms": 120.0,
+        "distance_px": 10.86,
+        "max_speed_px_s": 98.05,
+        "avg_confidence": 0.895
+      }
+    ],
+    "avg_track_duration_ms": 120.0,
+    "longest_track_duration_ms": 120.0,
+    "avg_track_confidence": 0.9225,
+    "peak_speed_px_s": 142.22,
+    "peak_speed_track_id": 11,
+    "peak_speed_object_type": "car",
+    "events_count": 4,
+    "interaction_count": 0,
+    "events": [
+      {
+        "event_type": "entry",
+        "start_frame": 210,
+        "end_frame": 210,
+        "duration_frames": 1,
+        "object_type": "person",
+        "tracking_ids": [4],
+        "details": {
+          "duration_ms": 120.0,
+          "confidence": 0.895
+        }
+      },
+      {
+        "event_type": "entry",
+        "start_frame": 210,
+        "end_frame": 210,
+        "duration_frames": 1,
+        "object_type": "car",
+        "tracking_ids": [11],
+        "details": {
+          "duration_ms": 120.0,
+          "confidence": 0.95
+        }
+      },
+      {
+        "event_type": "exit",
+        "start_frame": 213,
+        "end_frame": 213,
+        "duration_frames": 1,
+        "object_type": "person",
+        "tracking_ids": [4],
+        "details": {
+          "duration_ms": 120.0,
+          "confidence": 0.895
+        }
+      },
+      {
+        "event_type": "exit",
+        "start_frame": 213,
+        "end_frame": 213,
+        "duration_frames": 1,
+        "object_type": "car",
+        "tracking_ids": [11],
+        "details": {
+          "duration_ms": 120.0,
+          "confidence": 0.95
+        }
+      }
+    ],
+    "frame_errors": 0,
+    "fps": 25.0
+  },
+  "events": [
+    {
+      "event_type": "entry",
+      "start_frame": 210,
+      "end_frame": 210,
+      "duration_frames": 1,
+      "object_type": "person",
+      "tracking_ids": [4],
+      "details": {
+        "duration_ms": 120.0,
+        "confidence": 0.895
+      }
+    },
+    {
+      "event_type": "entry",
+      "start_frame": 210,
+      "end_frame": 210,
+      "duration_frames": 1,
+      "object_type": "car",
+      "tracking_ids": [11],
+      "details": {
+        "duration_ms": 120.0,
+        "confidence": 0.95
+      }
+    },
+    {
+      "event_type": "exit",
+      "start_frame": 213,
+      "end_frame": 213,
+      "duration_frames": 1,
+      "object_type": "person",
+      "tracking_ids": [4],
+      "details": {
+        "duration_ms": 120.0,
+        "confidence": 0.895
+      }
+    },
+    {
+      "event_type": "exit",
+      "start_frame": 213,
+      "end_frame": 213,
+      "duration_frames": 1,
+      "object_type": "car",
+      "tracking_ids": [11],
+      "details": {
+        "duration_ms": 120.0,
+        "confidence": 0.95
+      }
+    }
+  ],
+  "frames": [
+    {
+      "frame_id": 210,
+      "timestamp_ms": 8400,
+      "detections": [
+        {
+          "frame_id": 210,
+          "timestamp_ms": 8400,
+          "object_type": "person",
+          "class_id": 0,
+          "bbox": [844.4, 334.2, 907.3, 518.1],
+          "confidence": 0.91,
+          "tracking_id": 4
+        },
+        {
+          "frame_id": 210,
+          "timestamp_ms": 8400,
+          "object_type": "car",
+          "class_id": 2,
+          "bbox": [916.0, 382.5, 1146.2, 596.3],
+          "confidence": 0.94,
+          "tracking_id": 11
+        }
+      ]
+    },
+    {
+      "frame_id": 211,
+      "timestamp_ms": 8440,
+      "detections": [
+        {
+          "frame_id": 211,
+          "timestamp_ms": 8440,
+          "object_type": "person",
+          "class_id": 0,
+          "bbox": [847.2, 334.6, 911.0, 519.2],
+          "confidence": 0.9,
+          "tracking_id": 4
+        },
+        {
+          "frame_id": 211,
+          "timestamp_ms": 8440,
+          "object_type": "car",
+          "class_id": 2,
+          "bbox": [920.0, 384.1, 1151.0, 597.1],
+          "confidence": 0.95,
+          "tracking_id": 11
+        }
+      ]
+    },
+    {
+      "frame_id": 212,
+      "timestamp_ms": 8480,
+      "detections": [
+        {
+          "frame_id": 212,
+          "timestamp_ms": 8480,
+          "object_type": "person",
+          "class_id": 0,
+          "bbox": [851.1, 335.6, 914.5, 520.7],
+          "confidence": 0.89,
+          "tracking_id": 4
+        },
+        {
+          "frame_id": 212,
+          "timestamp_ms": 8480,
+          "object_type": "car",
+          "class_id": 2,
+          "bbox": [924.5, 386.1, 1156.3, 598.5],
+          "confidence": 0.95,
+          "tracking_id": 11
+        }
+      ]
+    },
+    {
+      "frame_id": 213,
+      "timestamp_ms": 8520,
+      "detections": [
+        {
+          "frame_id": 213,
+          "timestamp_ms": 8520,
+          "object_type": "person",
+          "class_id": 0,
+          "bbox": [854.4, 336.5, 918.0, 522.2],
+          "confidence": 0.88,
+          "tracking_id": 4
+        },
+        {
+          "frame_id": 213,
+          "timestamp_ms": 8520,
+          "object_type": "car",
+          "class_id": 2,
+          "bbox": [929.5, 388.0, 1162.1, 600.2],
+          "confidence": 0.96,
+          "tracking_id": 11
+        }
+      ]
+    }
+  ],
+  "tracks": [
+    {
+      "tracking_id": 4,
+      "object_type": "person",
+      "class_id": 0,
+      "frame_start": 210,
+      "frame_end": 213,
+      "duration_frames": 4,
+      "duration_ms": 120.0,
+      "time_in_frame_ms": 120.0,
+      "detection_count": 4,
+      "avg_confidence": 0.895,
+      "max_confidence": 0.91,
+      "path": [
+        {
+          "frame_id": 210,
+          "timestamp_ms": 8400,
+          "x": 875.85,
+          "y": 426.15,
+          "confidence": 0.91,
+          "scale": 183.9
+        },
+        {
+          "frame_id": 211,
+          "timestamp_ms": 8440,
+          "x": 879.1,
+          "y": 426.9,
+          "confidence": 0.9,
+          "scale": 184.6
+        },
+        {
+          "frame_id": 212,
+          "timestamp_ms": 8480,
+          "x": 882.8,
+          "y": 428.15,
+          "confidence": 0.89,
+          "scale": 185.1
+        },
+        {
+          "frame_id": 213,
+          "timestamp_ms": 8520,
+          "x": 886.2,
+          "y": 429.35,
+          "confidence": 0.88,
+          "scale": 185.7
+        }
+      ],
+      "distance_px": 10.86,
+      "avg_speed_px_s": 90.53,
+      "max_speed_px_s": 98.05,
+      "primary_score": 11.52,
+      "is_primary": true
+    },
+    {
+      "tracking_id": 11,
+      "object_type": "car",
+      "class_id": 2,
+      "frame_start": 210,
+      "frame_end": 213,
+      "duration_frames": 4,
+      "duration_ms": 120.0,
+      "time_in_frame_ms": 120.0,
+      "detection_count": 4,
+      "avg_confidence": 0.95,
+      "max_confidence": 0.96,
+      "path": [
+        {
+          "frame_id": 210,
+          "timestamp_ms": 8400,
+          "x": 1031.1,
+          "y": 489.4,
+          "confidence": 0.94,
+          "scale": 230.2
+        },
+        {
+          "frame_id": 211,
+          "timestamp_ms": 8440,
+          "x": 1035.5,
+          "y": 490.6,
+          "confidence": 0.95,
+          "scale": 231.0
+        },
+        {
+          "frame_id": 212,
+          "timestamp_ms": 8480,
+          "x": 1040.4,
+          "y": 492.3,
+          "confidence": 0.95,
+          "scale": 231.8
+        },
+        {
+          "frame_id": 213,
+          "timestamp_ms": 8520,
+          "x": 1045.8,
+          "y": 494.1,
+          "confidence": 0.96,
+          "scale": 232.6
+        }
+      ],
+      "distance_px": 15.43,
+      "avg_speed_px_s": 128.59,
+      "max_speed_px_s": 142.22,
+      "primary_score": 12.2,
+      "is_primary": true
+    }
+  ]
+}
